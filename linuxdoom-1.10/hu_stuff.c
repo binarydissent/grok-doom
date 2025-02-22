@@ -43,6 +43,8 @@ rcsid[] = "$Id: hu_stuff.c,v 1.4 1997/02/03 16:47:52 b1 Exp $";
 #include "dstrings.h"
 #include "sounds.h"
 
+#include "dialogue.h"
+
 //
 // Locally used constants, shortcuts.
 //
@@ -490,6 +492,8 @@ void HU_Drawer(void)
     HUlib_drawIText(&w_chat);
     if (automapactive)
 	HUlib_drawTextLine(&w_title, false);
+    // Do the dialogue things
+    NPCDialogue_UpdateAndDraw();
 
 }
 
@@ -574,6 +578,8 @@ void HU_Ticker(void)
 	    }
 	}
     }
+
+    NPCDialogue_Ticker();
 
 }
 

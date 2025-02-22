@@ -61,6 +61,8 @@ rcsid[] = "$Id: st_stuff.c,v 1.6 1997/02/03 22:45:13 b1 Exp $";
 #include "dstrings.h"
 #include "sounds.h"
 
+#include "dialogue.h"
+
 //
 // STATUS BAR DATA
 //
@@ -1284,6 +1286,8 @@ void ST_createWidgets(void)
 
     int i;
 
+    NPCDialogue_Init();
+
     // ready weapon ammo
     STlib_initNum(&w_ready,
 		  ST_AMMOX,
@@ -1435,6 +1439,7 @@ void ST_createWidgets(void)
 		  &plyr->maxammo[3],
 		  &st_statusbaron,
 		  ST_MAXAMMO3WIDTH);
+
 
 }
 

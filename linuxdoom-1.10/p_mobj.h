@@ -281,7 +281,10 @@ typedef struct mobj_s
     mapthing_t		spawnpoint;	
 
     // Thing being chased/attacked for tracers.
-    struct mobj_s*	tracer;	
+    struct mobj_s*	tracer;
+
+    // New Fields for NPC Dialogue Mod
+    char last_dialogue[128];         // Buffer to store the last dialogue line generated
     
 } mobj_t;
 

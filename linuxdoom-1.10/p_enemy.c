@@ -45,7 +45,54 @@ rcsid[] = "$Id: p_enemy.c,v 1.5 1997/02/03 22:45:11 b1 Exp $";
 // Data.
 #include "sounds.h"
 
+#include "dialogue.h"
+#include "p_mobj.h"
+#include "m_misc.h"  // For CONS_Printf(), if used for outputfA
 
+#include <pthread.h>
+
+#include <stdio.h>
+#include <string.h>
+
+
+typedef struct {
+    mobj_t* actor;
+    char context[256];
+} dialogue_async_args_t;
+
+
+void* dialogue_thread_func(void* arg) {
+    dialogue_async_args_t* args = (dialogue_async_args_t*) arg;
+    
+    printf("DEBUG: dialogue_thread_func started with context: %s\n", args->context);
+    fflush(stdout);
+    
+    char* dialogue = fetch_dialogue(args->context);
+    
+    if (dialogue) {
+        printf("DEBUG: fetch_dialogue returned: %s\n", dialogue);
+        fflush(stdout);
+        
+        // Update the actor's last dialogue (optional)
+        strncpy(args->actor->last_dialogue, dialogue, sizeof(args->actor->last_dialogue) - 1);
+        
+        // Now, update the HUD: display the dialogue.
+        // Note: Ensure that DisplayNPCDialogue is thread-safe.
+        // For many DOOM source ports, calling it directly might be acceptable,
+        // but if not, schedule the update on the main thread.
+        const char *npcName;
+        npcName = MobjTypeToString(args->actor->info->doomednum);
+        NPCDialogue_AddLine(npcName, dialogue);
+        
+        free(dialogue);
+    } else {
+        printf("DEBUG: Async fetch_dialogue returned NULL.\n");
+        fflush(stdout);
+    }
+    
+    free(args);
+    return NULL;
+}
 
 
 typedef enum
@@ -1574,13 +1621,38 @@ void A_XScream (mobj_t* actor)
     S_StartSound (actor, sfx_slop);	
 }
 
-void A_Pain (mobj_t* actor)
-{
+
+void A_Pain(mobj_t* actor) {
     if (actor->info->painsound)
-	S_StartSound (actor, actor->info->painsound);	
+        S_StartSound(actor, actor->info->painsound);
+
+    if (actor->health < (actor->info->spawnhealth - 2)) {
+        int damage = actor->info->spawnhealth - actor->health;
+        char msg[64];
+        snprintf(msg, sizeof(msg), "damage taken: %d", damage);
+
+        // Determine the NPC name.
+        // If a personality is loaded, use its name; otherwise, fallback on the numeric type.
+        const char *npcName;
+        npcName = MobjTypeToString(actor->info->doomednum);
+
+        // Prepare context for asynchronous dialogue generation.
+        dialogue_async_args_t* args = malloc(sizeof(dialogue_async_args_t));
+        if (args) {
+            args->actor = actor;
+            snprintf(args->context, sizeof(args->context),
+                     "<NPC>: %s, <HEALTH>: %d/%d, <EVENT>: %s",
+                     npcName, actor->health, actor->info->spawnhealth, msg);
+
+            pthread_t thread;
+            // Create a new thread to fetch dialogue asynchronously.
+            if (pthread_create(&thread, NULL, dialogue_thread_func, args) == 0) {
+                // Detach the thread so that resources are freed automatically.
+                pthread_detach(thread);
+            }
+        }
+    }
 }
-
-
 
 void A_Fall (mobj_t *actor)
 {
