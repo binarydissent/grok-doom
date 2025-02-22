@@ -1286,8 +1286,6 @@ void ST_createWidgets(void)
 
     int i;
 
-    NPCDialogue_Init();
-
     // ready weapon ammo
     STlib_initNum(&w_ready,
 		  ST_AMMOX,

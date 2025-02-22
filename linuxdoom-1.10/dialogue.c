@@ -62,24 +62,27 @@ void NPCDialogue_Init(void) {
     
     // Use HU_FONTSTART (e.g., '!') as the start character.
     HUlib_initSText(&npc_dialogue_stext,
-                    10,
-                    SCREENHEIGHT - 40,
                     2,
+                    SCREENHEIGHT - 60,
+                    1,
                     hu_font,
                     HU_FONTSTART,
                     &npc_dialogue_on);
 }
 
 void NPCDialogue_AddLine(const char *speaker, const char *text) {
+    char speaker_name[1]; // Adjust size as needed.
+    snprintf(speaker_name, sizeof(speaker_name), "%s:", "");
+
     // Clear the previous dialogue from the widget.
     HUlib_eraseSText(&npc_dialogue_stext);
-    
-    // Add the new dialogue line.
-    HUlib_addMessageToSText(&npc_dialogue_stext, (char*)speaker, (char*)text);
-    
+
+    // Add the new dialogue line using the concatenated speaker_name.
+    HUlib_addMessageToSText(&npc_dialogue_stext, speaker_name, (char*)text);
+
     // Ensure dialogue is visible.
     npc_dialogue_on = true;
-    
+
     // Set the timer to 3 seconds (assuming TICRATE tics per second).
     npc_dialogue_timer = 3 * TICRATE;
 }
@@ -110,7 +113,7 @@ const char* MobjTypeToString(mobjtype_t type) {
         case 66:   return "undead";
         case 67:   return "fatso";
         case 65:   return "chainguy";
-        case 3001: return "troop";
+        case 3001: return "imp";
         case 3002: return "sergeant";
         case 58:   return "shadows";
         case 3005: return "head";
@@ -127,10 +130,6 @@ const char* MobjTypeToString(mobjtype_t type) {
         case 89:   return "bossspit";
         case 87:   return "bosstarget";
         case 14:   return "teleportman";
-        default: {
-            static char unknown[32];
-            sprintf(unknown, "unknown.%d", type);
-            return unknown;
-        }
+        default:   return "unknown";
     }
 }

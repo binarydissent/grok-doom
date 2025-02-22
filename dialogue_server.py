@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 import os
 import time
+import re
 import textwrap
 from dotenv import load_dotenv
 from openai import OpenAI
+from pydantic import BaseModel
+
 
 load_dotenv()
+
+
+class Dialogue(BaseModel):
+    text: str
 
 
 class DoomDialogueServer:
@@ -29,15 +36,17 @@ class DoomDialogueServer:
         self.RES_FIFO = "/tmp/doom_dialogue_res"
 
         self.SYSTEM_PROMPT = (
-            "You are a gritty, R18 dialogue generator for DOOM NPCs. "
-            "Respond with raw, explicit, and brutal dialogue, using a maximum of 10 words. "
+            "You are a gritty, R18 dialogue generator for DOOM NPCs. Be chaotic and hilarious. Don't be repetitive. "
+            "Respond with raw, explicit, and brutal dialogue in no more than 40 characters. "
             "Your output must be snappy, dark, and true to the DOOM universe. "
-            "You will be given some context around the NPC for whom you are generating the dialogue. "
-            "<NPC> is the monster that is speaking. "
-            "<Health> is their current health attribute. "
-            "<Event> is what has triggered the dialogue."
+            "Input context will be provided in the following format: "
+            "<NPC> is the speaking entity, "
+            "<HEALTH> is the NPC's current health, "
+            "<EVENT> is the trigger event."
+            "Your response should be a single line of text."
         )
 
+        # No conversation history is maintained.
         self.init_fifo()
 
     def init_fifo(self):
@@ -46,10 +55,9 @@ class DoomDialogueServer:
             if not os.path.exists(fifo):
                 os.mkfifo(fifo)
 
-    def wrap_text(self, text: str, width: int = 80) -> str:
+    def wrap_text(self, text: str, width: int = 70) -> str:
         """
         Wrap text so that each line is at most `width` characters.
-        This avoids splitting words by disabling break_long_words.
         """
         return textwrap.fill(
             text, width=width, break_long_words=False, break_on_hyphens=False
@@ -70,31 +78,44 @@ class DoomDialogueServer:
         with open(self.RES_FIFO, "w") as res_fifo:
             res_fifo.write(response)
 
+    def extract_npc(self, context: str) -> str:
+        """
+        Extract the NPC's name from the context string.
+        Looks for a pattern like '<NPC> npcname </NPC>'.
+        If not found, returns "unknown".
+        """
+        match = re.search(r"<NPC>\s*(.*?)\s*</NPC>", context)
+        if match:
+            return match.group(1).strip()
+        return "unknown"
+
     def generate_dialogue(self, context: str) -> str:
-        completion = self.client.chat.completions.create(
+        # Prepare the messages list with system prompt and the current context.
+        messages = [
+            {"role": "system", "content": self.SYSTEM_PROMPT},
+            {"role": "user", "content": context},
+        ]
+        completion = self.client.beta.chat.completions.parse(
             model=self.MODEL,
-            messages=[
-                {"role": "system", "content": self.SYSTEM_PROMPT},
-                {"role": "user", "content": context},
-            ],
+            messages=messages,
+            response_format=Dialogue,
         )
-        dialogue = completion.choices[0].message.content.strip()
-        # Format the dialogue with line breaks so that each line is ≤80 chars.
-        return self.wrap_text(dialogue, width=80)
+        dialogue = completion.choices[0].message.parsed
+        text = dialogue.text.strip()
+        # Wrap dialogue to ensure lines are ≤80 characters.
+        wrapped_dialogue = self.wrap_text(text, width=80)
+        return wrapped_dialogue
 
     def run(self):
         print("Dialogue server started. Listening on request FIFO:", self.REQ_FIFO)
-
         while True:
             context = self.read_request()
             if not context:
                 time.sleep(0.1)
                 continue
             print("Received context:", context)
-
             dialogue = self.generate_dialogue(context)
             print("Generated dialogue (wrapped):\n", dialogue)
-
             self.write_response(dialogue)
             # Delay briefly to avoid a tight loop.
             time.sleep(0.1)

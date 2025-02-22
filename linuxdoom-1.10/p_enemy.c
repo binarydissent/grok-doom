@@ -77,14 +77,12 @@ void* dialogue_thread_func(void* arg) {
         strncpy(args->actor->last_dialogue, dialogue, sizeof(args->actor->last_dialogue) - 1);
         
         // Now, update the HUD: display the dialogue.
-        // Note: Ensure that DisplayNPCDialogue is thread-safe.
-        // For many DOOM source ports, calling it directly might be acceptable,
-        // but if not, schedule the update on the main thread.
         const char *npcName;
         npcName = MobjTypeToString(args->actor->info->doomednum);
-        NPCDialogue_AddLine(npcName, dialogue);
-        
-        free(dialogue);
+        if (strcmp(npcName, "unknown") != 0) {
+        	NPCDialogue_AddLine(npcName, dialogue);
+        	free(dialogue);
+        }
     } else {
         printf("DEBUG: Async fetch_dialogue returned NULL.\n");
         fflush(stdout);
@@ -973,9 +971,29 @@ void A_TroopAttack (mobj_t* actor)
 	return;
     }
 
-    
+
     // launch a missile
     P_SpawnMissile (actor, actor->target, MT_TROOPSHOT);
+
+    // Determine the NPC name.
+    const char *npcName;
+    npcName = MobjTypeToString(actor->info->doomednum);
+
+    // Prepare context for asynchronous dialogue generation.
+    dialogue_async_args_t* args = malloc(sizeof(dialogue_async_args_t));
+    if (args) {
+        args->actor = actor;
+        snprintf(args->context, sizeof(args->context),
+                 "<NPC>%s</NPC><EVENT>IMP Launched fireball at player</EVENT>", npcName);
+
+        pthread_t thread;
+        // Create a new thread to fetch dialogue asynchronously.
+        if (pthread_create(&thread, NULL, dialogue_thread_func, args) == 0) {
+            // Detach the thread so that resources are freed automatically.
+            pthread_detach(thread);
+        }
+    }
+
 }
 
 
@@ -1321,6 +1339,7 @@ void A_Fire (mobj_t* actor)
     actor->y = dest->y + FixedMul (24*FRACUNIT, finesine[an]);
     actor->z = dest->z;
     P_SetThingPosition (actor);
+
 }
 
 
@@ -1346,6 +1365,7 @@ void A_VileTarget (mobj_t*	actor)
     fog->target = actor;
     fog->tracer = actor->target;
     A_Fire (fog);
+
 }
 
 
@@ -1572,6 +1592,7 @@ void A_PainDie (mobj_t* actor)
     A_PainShootSkull (actor, actor->angle+ANG90);
     A_PainShootSkull (actor, actor->angle+ANG180);
     A_PainShootSkull (actor, actor->angle+ANG270);
+
 }
 
 
@@ -1629,28 +1650,30 @@ void A_Pain(mobj_t* actor) {
     if (actor->health < (actor->info->spawnhealth - 2)) {
         int damage = actor->info->spawnhealth - actor->health;
         char msg[64];
-        snprintf(msg, sizeof(msg), "damage taken: %d", damage);
+        snprintf(msg, sizeof(msg), "Player caused %d damage", damage);
 
         // Determine the NPC name.
         // If a personality is loaded, use its name; otherwise, fallback on the numeric type.
         const char *npcName;
         npcName = MobjTypeToString(actor->info->doomednum);
 
-        // Prepare context for asynchronous dialogue generation.
-        dialogue_async_args_t* args = malloc(sizeof(dialogue_async_args_t));
-        if (args) {
-            args->actor = actor;
-            snprintf(args->context, sizeof(args->context),
-                     "<NPC>: %s, <HEALTH>: %d/%d, <EVENT>: %s",
-                     npcName, actor->health, actor->info->spawnhealth, msg);
+        if (strcmp(npcName, "unknown") != 0) {
+	        // Prepare context for asynchronous dialogue generation.
+	        dialogue_async_args_t* args = malloc(sizeof(dialogue_async_args_t));
+	        if (args) {
+	            args->actor = actor;
+	            snprintf(args->context, sizeof(args->context),
+	                     "<NPC>%s</NPC><HEALTH>%d/%d</HEALTH><EVENT>%s</EVENT>",
+	                     npcName, actor->health, actor->info->spawnhealth, msg);
 
-            pthread_t thread;
-            // Create a new thread to fetch dialogue asynchronously.
-            if (pthread_create(&thread, NULL, dialogue_thread_func, args) == 0) {
-                // Detach the thread so that resources are freed automatically.
-                pthread_detach(thread);
-            }
-        }
+	            pthread_t thread;
+	            // Create a new thread to fetch dialogue asynchronously.
+	            if (pthread_create(&thread, NULL, dialogue_thread_func, args) == 0) {
+	                // Detach the thread so that resources are freed automatically.
+	                pthread_detach(thread);
+	            }
+	        }
+	    }
     }
 }
 

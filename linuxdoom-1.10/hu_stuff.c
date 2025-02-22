@@ -411,6 +411,9 @@ void HU_Init(void)
 	hu_font[i] = (patch_t *) W_CacheLumpName(buffer, PU_STATIC);
     }
 
+    NPCDialogue_Init();
+    
+
 }
 
 void HU_Stop(void)
