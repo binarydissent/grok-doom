@@ -5,14 +5,14 @@ import re
 import textwrap
 from dotenv import load_dotenv
 from openai import OpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
 
 
 load_dotenv()
 
 
 class Dialogue(BaseModel):
-    text: str
+    text: constr(max_length=40)
 
 
 class DoomDialogueServer:
@@ -37,7 +37,7 @@ class DoomDialogueServer:
 
         self.SYSTEM_PROMPT = (
             "You are a gritty, R18 dialogue generator for DOOM NPCs. Be chaotic and hilarious. Don't be repetitive. "
-            "Respond with raw, explicit, and brutal dialogue in no more than 40 characters. "
+            "Respond with raw, explicit, and brutal dialogue in no more than 40 characters."
             "Your output must be snappy, dark, and true to the DOOM universe. "
             "Input context will be provided in the following format: "
             "<NPC> is the speaking entity, "
