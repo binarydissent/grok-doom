@@ -92,3 +92,12 @@ It uses FIFOs—/tmp/doom_dialogue_req for requests, /tmp/doom_dialogue_res for 
 
 **Ready?**  
 Fire it up, tweak it for your mods, and let Grok turn DOOM into a screaming, swearing, demon-filled riot. Rip and tear—with attitude!
+
+
+**Credits:**
+
+Source code yoinked from https://github.com/0Lunar/DOOM
+Original source code from https://github.com/id-Software/DOOM
+
+Copyright (c) ZeniMax Media Inc.
+Licensed under the GNU General Public License 2.0.
