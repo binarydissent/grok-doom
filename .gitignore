@@ -1,4 +1,4 @@
 linuxdoom-1.10/linux/*
 
-,env
-,venv
+.env
+.venv
