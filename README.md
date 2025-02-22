@@ -72,10 +72,10 @@ XAI_API_KEY=your_xai_api_key
 Run the Python script to connect Grok to DOOM:
 
 ```bash
-python3 doom_dialogue_server.py
+python3 dialogue_server.py
 ```
 
-It uses FIFOs—/tmp/doom_dialogue_req for requests, /tmp/doom_dialogue_res for Grok’s responses—and pumps out 80-character lines of pure mayhem.
+It uses FIFOs—/tmp/doom_dialogue_req for requests, /tmp/doom_dialogue_res for Grok’s responses—and pumps out 40-character lines of pure mayhem.
 
 ----------
 
